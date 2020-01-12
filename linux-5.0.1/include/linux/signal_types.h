@@ -68,4 +68,13 @@ struct ksignal {
 	int sig;
 };
 
+#define SIGNAL_HANDLED 1
+#define SIGNAL_NOT_HANDLED 0
+
+struct received_signal {
+	int sig_num;
+	int handled;
+	struct list_head list;
+};
+
 #endif /* _LINUX_SIGNAL_TYPES_H */

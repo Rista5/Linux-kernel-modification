@@ -1072,6 +1072,15 @@ static inline void userns_fixup_signal_uid(struct kernel_siginfo *info, struct t
 }
 #endif
 
+static void add_received_signal(int sig, struct task_struct *t)
+{
+	struct received_signal *rs;
+	rs = kmalloc(sizeof(struct received_signal), GFP_KERNEL);
+	rs->sig_num = sig;
+	rs->handled = SIGNAL_NOT_HANDLED;
+	list_add(&rs->list, &t->rec_sig);
+}
+
 static int __send_signal(int sig, struct kernel_siginfo *info, struct task_struct *t,
 			enum pid_type type, int from_ancestor_ns)
 {
@@ -1121,6 +1130,7 @@ static int __send_signal(int sig, struct kernel_siginfo *info, struct task_struc
 	q = __sigqueue_alloc(sig, t, GFP_ATOMIC, override_rlimit);
 	if (q) {
 		list_add_tail(&q->list, &pending->list);
+		add_received_signal(sig, t);
 		switch ((unsigned long) info) {
 		case (unsigned long) SEND_SIG_NOINFO:
 			clear_siginfo(&q->info);
@@ -2581,6 +2591,19 @@ relock:
 	return ksig->sig > 0;
 }
 
+static void change_received_signal_status(int sig)
+{
+	struct received_signal *rs;
+	list_for_each_entry(rs, &current->rec_sig, list)
+	{
+		if (rs->sig_num == sig && rs->handled != SIGNAL_HANDLED)
+		{
+			rs->handled = SIGNAL_HANDLED;
+			return;
+		}
+	}
+}
+
 /**
  * signal_delivered - 
  * @ksig:		kernel signal struct
@@ -2606,6 +2629,7 @@ static void signal_delivered(struct ksignal *ksig, int stepping)
 		sigaddset(&blocked, ksig->sig);
 	set_current_blocked(&blocked);
 	tracehook_signal_handler(stepping);
+	change_received_signal_status(ksig->sig);
 }
 
 void signal_setup_done(int failed, struct ksignal *ksig, int stepping)

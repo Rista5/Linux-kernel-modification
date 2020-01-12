@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 0
 SUBLEVEL = 1
-EXTRAVERSION = -hello
+EXTRAVERSION = -signals
 NAME = Shy Crocodile
 
 # *DOCUMENTATION*
