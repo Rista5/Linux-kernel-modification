@@ -11,7 +11,7 @@ static void print_signals(struct task_struct *t)
     printk("signal_num\t handled\n");
 	list_for_each_entry(rs, &t->rec_sig, list)
     {
-        printk("%d\t %d\n");
+        printk("%d\t %d\n", rs->sig_num, rs->handled);
     }
 }
 

@@ -1076,6 +1076,8 @@ static void add_received_signal(int sig, struct task_struct *t)
 {
 	struct received_signal *rs;
 	rs = kmalloc(sizeof(struct received_signal), GFP_KERNEL);
+	if(t == NULL || rs == NULL)
+		return;
 	rs->sig_num = sig;
 	rs->handled = SIGNAL_NOT_HANDLED;
 	list_add(&rs->list, &t->rec_sig);
