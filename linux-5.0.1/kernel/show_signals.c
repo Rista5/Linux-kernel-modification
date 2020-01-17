@@ -19,5 +19,6 @@ asmlinkage long sys_print_signals(void)
 {
     printk("SYSCALL_PRINT_SIGNALS!\n\n");
     print_signals(current);
+    // printk("Process counter: %d, counter2: %d", current->counter, current->counter2);
 	return 0;
 }

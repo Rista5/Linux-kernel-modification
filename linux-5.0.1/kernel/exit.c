@@ -199,6 +199,18 @@ repeat:
 	ptrace_release_task(p);
 	__exit_signal(p);
 
+
+	// FREE signal list
+	struct received_signal *rs;
+	struct list_head *pos;
+	list_for_each(pos, &p->rec_sig)
+	{
+		rs = list_entry(pos, struct received_signal, list);
+		list_del(pos);
+		kfree(rs);
+	}
+
+
 	/*
 	 * If we are the last non-leader member of the thread
 	 * group, and the leader is zombie, then notify the

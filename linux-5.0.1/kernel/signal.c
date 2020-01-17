@@ -1075,12 +1075,19 @@ static inline void userns_fixup_signal_uid(struct kernel_siginfo *info, struct t
 static void add_received_signal(int sig, struct task_struct *t)
 {
 	struct received_signal *rs;
-	rs = kmalloc(sizeof(struct received_signal), GFP_KERNEL);
+	rs = kmalloc(sizeof(*rs), GFP_KERNEL);
 	if(t == NULL || rs == NULL)
 		return;
 	rs->sig_num = sig;
 	rs->handled = SIGNAL_NOT_HANDLED;
 	list_add(&rs->list, &t->rec_sig);
+	// t->counter = 0;
+}
+
+void free_received_signal_list(struct task_struct *t)
+{ 
+	// kvfree(void * adr)
+
 }
 
 static int __send_signal(int sig, struct kernel_siginfo *info, struct task_struct *t,
@@ -2604,6 +2611,7 @@ static void change_received_signal_status(int sig)
 			return;
 		}
 	}
+	// current->counter2 = 1;
 }
 
 /**
