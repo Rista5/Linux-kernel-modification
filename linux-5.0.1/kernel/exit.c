@@ -186,6 +186,17 @@ void release_task(struct task_struct *p)
 {
 	struct task_struct *leader;
 	int zap_leader;
+
+	// // FREE signal list
+	// struct received_signal *rs;
+	// struct list_head *pos;
+	// list_for_each(pos, &p->rec_sig)
+	// {
+	// 	rs = list_entry(pos, struct received_signal, list);
+	// 	list_del(pos);
+	// 	kfree(rs);
+	// }
+	
 repeat:
 	/* don't need to get the RCU readlock here - the process is dead and
 	 * can't be modifying its own credentials. But shut RCU-lockdep up */
@@ -198,17 +209,6 @@ repeat:
 	write_lock_irq(&tasklist_lock);
 	ptrace_release_task(p);
 	__exit_signal(p);
-
-
-	// FREE signal list
-	struct received_signal *rs;
-	struct list_head *pos;
-	list_for_each(pos, &p->rec_sig)
-	{
-		rs = list_entry(pos, struct received_signal, list);
-		list_del(pos);
-		kfree(rs);
-	}
 
 
 	/*
