@@ -1318,4 +1318,4 @@ static inline unsigned int ksys_personality(unsigned int personality)
 #endif
 
 asmlinkage long sys_hello(void);
-asmlinkage long sys_print_signals(void);
+asmlinkage long sys_print_signals(int pid);

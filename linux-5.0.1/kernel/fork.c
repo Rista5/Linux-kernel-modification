@@ -158,8 +158,20 @@ static inline struct task_struct *alloc_task_struct_node(int node)
 	return kmem_cache_alloc_node(task_struct_cachep, GFP_KERNEL, node);
 }
 
+void clear_singal_list(struct task_struct *p)
+{
+	// // FREE signal list
+	struct received_signal *pos, *next;
+	list_for_each_entry_safe(pos, next, &p->rec_sig, list);
+	{
+		list_del(&pos->list);
+		kfree(pos);
+	}
+}
+
 static inline void free_task_struct(struct task_struct *tsk)
 {
+	clear_singal_list(tsk);
 	kmem_cache_free(task_struct_cachep, tsk);
 }
 #endif

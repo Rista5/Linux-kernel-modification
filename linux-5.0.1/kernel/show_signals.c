@@ -15,10 +15,14 @@ static void print_signals(struct task_struct *t)
     }
 }
 
-asmlinkage long sys_print_signals(void)
+asmlinkage long sys_print_signals(int pid)
 {
-    printk("SYSCALL_PRINT_SIGNALS!\n\n");
+    struct task_struct *p;
+    printk("SYSCALL print signals for porcess pid:%d", pid);
+    // print_signals(current);
+    p = find_task_by_vpid((pid_t) pid);
     print_signals(current);
-    // printk("Process counter: %d, counter2: %d", current->counter, current->counter2);
+
+    printk("\n");
 	return 0;
 }
