@@ -344,7 +344,7 @@
 333	common	io_pgetevents		__x64_sys_io_pgetevents
 334	common	rseq			__x64_sys_rseq
 335	64	hello			sys_hello
-336 64  print_signals   sys_print_signals
+336 common  print_signals   __x64_sys_print_signals
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact

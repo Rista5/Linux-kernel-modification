@@ -4,8 +4,9 @@
 #include <linux/signal_types.h>
 #include <linux/sched.h>
 #include <linux/list.h>
+#include <linux/syscalls.h>
 
-static void print_signals(struct task_struct *t)
+static void print_sig(struct task_struct *t)
 {
     struct received_signal *rs;
     printk("signal_num\t handled\n");
@@ -15,13 +16,21 @@ static void print_signals(struct task_struct *t)
     }
 }
 
-asmlinkage long sys_print_signals(int pid)
+SYSCALL_DEFINE1(print_signals, pid_t, pid)
 {
     struct task_struct *p;
-    printk("SYSCALL print signals for porcess pid:%d", pid);
+    printk("SYSCALL print signals for porcess pid: %d\n", pid);
     // print_signals(current);
-    p = find_task_by_vpid((pid_t) pid);
-    print_signals(current);
+    p = find_task_by_vpid(pid);
+    if (p != NULL)
+    {
+        print_sig(p);
+    }
+    else
+    {
+        printk("Unable to find process with pid: %d\n", pid);
+    }
+    
 
     printk("\n");
 	return 0;

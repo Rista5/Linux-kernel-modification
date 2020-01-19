@@ -171,7 +171,16 @@ void clear_singal_list(struct task_struct *p)
 
 static inline void free_task_struct(struct task_struct *tsk)
 {
-	clear_singal_list(tsk);
+	// clear_singal_list(tsk);
+	struct received_signal *p;
+	struct list_head *pos, *next;
+	list_for_each_safe(pos, next, &tsk->rec_sig)
+	{
+		p = list_entry(pos, struct received_signal, list);
+		list_del(pos);
+		kfree(p);
+	}
+
 	kmem_cache_free(task_struct_cachep, tsk);
 }
 #endif
