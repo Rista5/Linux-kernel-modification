@@ -7,9 +7,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <sys/wait.h>
 
-#define PID_LOCATION "/sys/module/signal_module/parameters/pid"
-#define MOULE_READ_LOCATION "/dev/signal_module"
+#define MODULE_LOCATION "/proc/sig_mod"
 #define BUFF_LEN 100
 #define SEC 3
 // SIGALRM: 	 14
@@ -44,38 +45,42 @@ void print_signals(int pid)
     char buffer[BUFF_LEN];
     int read_count, write_count;
     int len;
-    fd = open(PID_LOCATION, O_WRONLY);
+    fd = open(MODULE_LOCATION, O_WRONLY);
 
     if(fd < 0)
     {
         printf("Error opening pid file descriptor\n");
+		printf("error code : %d\n", fd);
+		return;
     }
 
     sprintf(buffer, "%d", pid);
     len = strlen(buffer);
 
-    read_count = write(fd, buffer, len);
-    if (read_count > 0)
+    write_count = write(fd, buffer, len);
+    if (write_count > 0)
     {
-        printf("%s", buffer);
+		printf("Wrote to pid -> %s\n", buffer);
     }
     else
     {
-        printf("Nothing to print\n");
+        printf("Couldnt print to pid location\n");
         return;
     }
     close(fd);
 
-    fd = open(MOULE_READ_LOCATION, O_RDONLY)
+    fd = open(MODULE_LOCATION, O_RDONLY);
     if(fd < 0)
     {
         printf("Error opening module file descriptor\n");
     }
 
-    while(read_count = read(fd, buffer, BUFF_LEN))
+	read_count = read(fd, buffer, BUFF_LEN);
+    while(read_count)
     {
-        printf(buffer);
+        printf("%.*s", read_count, buffer);
         printf("\n");
+		read_count = read(fd, buffer, BUFF_LEN);
     }
     close(fd);
 }
@@ -108,7 +113,7 @@ int main()
 		kill(pid, SIGUSR1);
 
 		// amma = syscall(336, pid);
-		wpid = wait(&status);
+		wpid = wait(NULL);
 
 		printf("Before first ALARM\n");
 		alarm(SEC);

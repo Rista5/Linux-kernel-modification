@@ -1,7 +1,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/fs.h>
+// #include <linux/fs.h>
 #include <linux/signal.h>
 #include <linux/signal_types.h>
 #include <linux/sched.h>
@@ -9,6 +9,7 @@
 #include <linux/string.h>
 #include <linux/pid.h>
 #include <asm/uaccess.h>
+#include <linux/proc_fs.h>
 
 
 MODULE_LICENSE("GPL");
@@ -17,20 +18,14 @@ MODULE_DESCRIPTION("Simple module to print received signals of a process.");
 MODULE_VERSION("1.0.0");
 
 #define DEVICE_NAME "signal_module"
-#define EXAMPLE_MSG "Hello from signal module\n";
+#define PROCFS_NAME "sig_mod"
 #define MSG_BUFFER_LEN 1024
 #define MSG_PRINTED 1
 #define MSG_NOT_PRINTED 0
 
-// Prototypes for device functions
-static int device_open(struct inode *, struct file *);
-static int device_release(struct inode *, struct file *);
-static ssize_t device_read(struct file *, char *, size_t, loff_t *);
-static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
-
-static int major_num;
-static int device_open_count = 0;
+static struct proc_dir_entry *module_proc_file;
 static char msg_buffer[MSG_BUFFER_LEN];
+static const char HEADER_MSG[] = "SIG\tHANDLED\n";
 
 
 static struct task_struct *p;
@@ -40,89 +35,93 @@ static struct received_signal *rs;
 static int initial_msg_printed = MSG_NOT_PRINTED;
 
 static int pid = 0;
-module_param(pid, int, 0774);
+module_param(pid, int, 0660);
 MODULE_PARM_DESC(pid, "PID of a process whose signals will be printed.");
 
-
-// stucture with pointers to all device functions
-static struct file_operations file_ops = {
-    .read = device_read,
-    .write = device_write,
-    .open = device_open,
-    .release = device_release
-};
-
-static ssize_t device_read(struct file *flip, char *buffer, size_t len, loff_t *offset)
+static ssize_t procfile_read(struct file *flip, char __user *ubuf, size_t count, loff_t *ppos)
 {
     int bytes_read = 0;
-    size_t msg_len = 0;
+
+    printk(KERN_INFO "procfile_read (/proc/%s) called\n", PROCFS_NAME);
+
     if (pid == 0)
     {
         printk("Process PID not set!\n");
     }
     if (p == NULL)
     {
-        printk("Process with PID: %d not found or file not opened\n.", pid);
+        printk("Process with pid: %d not found\n", pid);
     }
     if (ptr == head)
     {
+        printk("Head equal to ptr\n");
+        ptr = head->next;
+        initial_msg_printed = MSG_NOT_PRINTED;
         return 0;
     }
-    // else if (initial_msg_printed == MSG_NOT_PRINTED)
-    // {
-        
-    // }
-    rs = container_of(ptr, struct received_signal, list);
-    sprintf(msg_buffer, "%d\t%d", rs->sig_num, rs->handled);
-    msg_len = strlen(msg_buffer);
-    while(len && bytes_read < msg_len)
+    if (initial_msg_printed == MSG_NOT_PRINTED)
     {
-        put_user(msg_buffer[bytes_read], buffer++);
-        bytes_read++;
-        len--;
+        initial_msg_printed = MSG_PRINTED;
+        printk("Printing signals for process PID: %d\n", pid);
+        bytes_read = strlen(HEADER_MSG);
+        if(raw_copy_to_user(ubuf, HEADER_MSG, bytes_read))
+            return -EFAULT;
+        return bytes_read;
     }
+
+    rs = container_of(ptr, struct received_signal, list);
+    bytes_read = sprintf(msg_buffer, "%d\t%d\n", rs->sig_num, rs->handled);
+    if(raw_copy_to_user(ubuf, msg_buffer, bytes_read))
+        return -EFAULT;
+    printk("read: %d\n", bytes_read);
 
     ptr = ptr->next;
     return bytes_read;
 }
 
-static ssize_t device_write(struct file *flip, const char *buffer, size_t len, loff_t *offset)
+static ssize_t proc_write(struct file *flip, const char __user *ubuf, size_t count, loff_t *ppos)
 {
-    printk(KERN_ALERT "This operation is not supported.\n");
-    return -EINVAL;
-}
-
-static int device_open(struct inode *node, struct file *flip)
-{
-    if (device_open_count)
+    char buffer[100];
+    int scaned_num, c;
+    printk("Write called\n");
+    if(raw_copy_from_user(buffer, ubuf, count))
+        return -EINVAL;
+    printk("Read from user\n");
+    scaned_num = sscanf(buffer, "%d", &pid);
+    printk("Scaned pid: %d\n", pid);
+    printk("scaned number: %d\n", scaned_num);
+    if(scaned_num != 1)
     {
-        return -EBUSY;
+        printk("Error while parsing pid\n");
+        return -EINVAL;
     }
-    if(pid == 0)
-    {
-        printk("Pid not set\n");
-        return -EBUSY;
-    }
+    c = strlen(buffer);
+    printk("buffer len: %d\n", c);
 
-    device_open_count++;
-    try_module_get(THIS_MODULE);
     p = pid_task(find_vpid(pid), PIDTYPE_PID);
-    initial_msg_printed = MSG_NOT_PRINTED;
     if (p != NULL)
     {
         head = &p->rec_sig;
         ptr = head->next;
+        initial_msg_printed = MSG_NOT_PRINTED;
+        printk("Process with PID: %d found\n", pid);
+    }
+    else
+    {
+        printk("Process with PID: %d not found!\n.", pid);
+        return 0;
     }
 
-    return 0;
+    *ppos = c;
+    return c;
 }
 
-static int device_release(struct inode *node, struct file *flip)
-{
-    device_open_count--;
-    module_put(THIS_MODULE);
-    return 0;
-}
+static const struct file_operations file_ops = {
+    .owner = THIS_MODULE,
+    .read = procfile_read,
+    .write = proc_write,
+};
+
 
 static void print_sig(struct task_struct *t)
 {
@@ -136,15 +135,12 @@ static void print_sig(struct task_struct *t)
 
 static int __init init_signal_module(void)
 {
-    major_num = register_chrdev(0, "signal_module", &file_ops);
-    if(major_num < 0)
+    module_proc_file = proc_create(PROCFS_NAME, 0664, NULL, &file_ops);
+    if (module_proc_file == NULL)
     {
-        printk(KERN_ALERT "Could not register device: %d\n", major_num);
-        return major_num;
-    }
-    else 
-    {
-        printk(KERN_INFO"signal_module module loaded with device major number %d\n", major_num);
+        proc_remove(module_proc_file);
+        printk(KERN_ALERT "Error: Could not initialize /proc/%s\n", PROCFS_NAME);
+        return -ENOMEM;
     }
     
     if (pid == 0)
@@ -164,6 +160,7 @@ static int __init init_signal_module(void)
 
 static void __exit exit_signal_module(void)
 {
+    proc_remove(module_proc_file);
     printk("SIGNAL MODULE exit\n");
 }
 
