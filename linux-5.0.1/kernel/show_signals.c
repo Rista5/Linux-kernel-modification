@@ -20,7 +20,6 @@ SYSCALL_DEFINE1(print_signals, pid_t, pid)
 {
     struct task_struct *p;
     printk("SYSCALL print signals for porcess pid: %d\n", pid);
-    // print_signals(current);
     p = find_task_by_vpid(pid);
     if (p != NULL)
     {
@@ -30,8 +29,6 @@ SYSCALL_DEFINE1(print_signals, pid_t, pid)
     {
         printk("Unable to find process with pid: %d\n", pid);
     }
-    
-
     printk("\n");
 	return 0;
 }

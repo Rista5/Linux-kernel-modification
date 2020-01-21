@@ -171,7 +171,6 @@ void clear_singal_list(struct task_struct *p)
 
 static inline void free_task_struct(struct task_struct *tsk)
 {
-	// clear_singal_list(tsk);
 	struct received_signal *p;
 	struct list_head *pos, *next;
 	list_for_each_safe(pos, next, &tsk->rec_sig)
